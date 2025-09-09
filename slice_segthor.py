@@ -50,7 +50,6 @@ def sanity_gt(gt, ct) -> bool:
 
     return True
 
-
 """
 TODO: Implement patient slicing.
 Context:
@@ -87,23 +86,31 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
     # Import CT and GT image
     ct_img = nibabel.load(ct_path).get_fdata()
     ct_nifty = nibabel.load(ct_path)
-    gt_img = nibabel.load(gt_path).get_fdata()
+    gt_img = nibabel.load(gt_path).get_fdata().astype(np.uint8)
     
     # Get coordinates and voxel spacings.
-    x, y, z = ct_img.shape()
+    x, y, z = ct_img.shape
     dx, dy, dz = ct_nifty.header.get_zooms()
 
     # Validate with sanity_ct and sanity_gt
     assert sanity_ct(ct_img, x, y, z, dx, dy, dz)
     assert sanity_gt(gt_img, ct_img)
 
-    # Normalize image
+    # Normalize CT-image
     ct_img_normalized = norm_arr(ct_img)
 
-    # Get image idz
+    # Increasing GT greyscale distance to increase contrast
+    gt_img *= 63
+    assert gt_img.dtype == np.uint8, gt_img.dtype
+    assert set(np.unique(gt_img)) <= set([0, 63, 126, 189, 252]), np.unique(gt_img)
+
+    # Slice 3D-image into 2D-slices
     for idz in range(ct_img.shape[2]):
         im = Image.fromarray(ct_img_normalized[:,:,idz])
+        im_gt = Image.fromarray(gt_img[:,:,idz])
+
         im.save(f"{dest_path}\\img\\{id_}_{idz:04d}.png")
+        im_gt.save(f"{dest_path}\\gt\\{id_}_{idz:04d}.png")
     
     # Return voxel spacing
     return dx, dy, dz
@@ -119,12 +126,16 @@ Requirements:
 """
 
 def get_splits(src_path: Path, retains: int) -> tuple[list[str], list[str]]:
-    # Import the splits from the patients
 
+    # List patient IDs from train
     patient_ids = [f.name for f in Path(str(src_path) + "/train").iterdir()]
+
+    # Shuffle patient ids
     random.shuffle(patient_ids)
 
+    # return first patients as validation, the rest as training
     return patient_ids[:retains], patient_ids[retains:]
+
 
 def main(args: argparse.Namespace):
     src_path: Path = Path(args.source_dir)
