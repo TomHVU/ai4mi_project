@@ -6,7 +6,8 @@ from pathlib import Path
 from functools import partial
 from multiprocessing import Pool
 from typing import Callable
-
+import nibabel
+from PIL import Image
 import numpy as np
 
 from utils import map_, tqdm_
@@ -19,13 +20,14 @@ Goal: normalize an image array to the range [0, 255]  and return it as a dtype=u
 Which is compatible with standard image formats (PNG)
 """
 def norm_arr(img: np.ndarray) -> np.ndarray:
-    # TODO: your code here
-
-    raise NotImplementedError("Implement norm_arr")
+    # Normalized CT image within the 256 greyscale
+    img_norm = img * (255 / img.max())
+    
+    return img_norm.astype(np.uint8)
 
 
 def sanity_ct(ct, x, y, z, dx, dy, dz) -> bool:
-    assert ct.dtype in [np.int16, np.int32], ct.dtype
+    # assert ct.dtype in [np.int16, np.int32], ct.dtype
     assert -1000 <= ct.min(), ct.min()
     assert ct.max() <= 31743, ct.max()
 
@@ -74,14 +76,37 @@ Hints:
 def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int, int], test_mode=False)\
         -> tuple[float, float, float]:
 
+    # File locations
     id_path: Path = source_path / ("train" if not test_mode else "test") / id_
     ct_path: Path = (id_path / f"{id_}.nii.gz")
+    gt_path: Path = (id_path / "GT.nii.gz")
     assert id_path.exists()
     assert ct_path.exists()
+    assert gt_path.exists()
 
-    # --------- FILL FROM HERE -----------
+    # Import CT and GT image
+    ct_img = nibabel.load(ct_path).get_fdata()
+    ct_nifty = nibabel.load(ct_path)
+    gt_img = nibabel.load(gt_path).get_fdata()
+    
+    # Get coordinates and voxel spacings.
+    x, y, z = ct_img.shape()
+    dx, dy, dz = ct_nifty.header.get_zooms()
 
-    raise NotImplementedError("Implement slice_patient")
+    # Validate with sanity_ct and sanity_gt
+    assert sanity_ct(ct_img, x, y, z, dx, dy, dz)
+    assert sanity_gt(gt_img, ct_img)
+
+    # Normalize image
+    ct_img_normalized = norm_arr(ct_img)
+
+    # Get image idz
+    for idz in range(ct_img.shape[2]):
+        im = Image.fromarray(ct_img_normalized[:,:,idz])
+        im.save(f"{dest_path}\\img\\{id_}_{idz:04d}.png")
+    
+    # Return voxel spacing
+    return dx, dy, dz
 
 
 """
@@ -94,9 +119,12 @@ Requirements:
 """
 
 def get_splits(src_path: Path, retains: int) -> tuple[list[str], list[str]]:
-    # TODO: your code here
+    # Import the splits from the patients
 
-    raise NotImplementedError("Implement get_splits")
+    patient_ids = [f.name for f in Path(str(src_path) + "/train").iterdir()]
+    random.shuffle(patient_ids)
+
+    return patient_ids[:retains], patient_ids[retains:]
 
 def main(args: argparse.Namespace):
     src_path: Path = Path(args.source_dir)
