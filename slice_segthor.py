@@ -106,11 +106,17 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
 
     # Slice 3D-image into 2D-slices
     for idz in range(ct_img.shape[2]):
-        im = Image.fromarray(ct_img_normalized[:,:,idz])
-        im_gt = Image.fromarray(gt_img[:,:,idz])
 
-        im.save(f"{dest_path}\\img\\{id_}_{idz:04d}.png")
-        im_gt.save(f"{dest_path}\\gt\\{id_}_{idz:04d}.png")
+        # Slice and resize the images  
+        ct_slice = Image.fromarray(ct_img_normalized[:,:,idz])
+        ct_slice_resized = ct_slice.resize((256, 256), Image.Resampling.LANCZOS)
+
+        gt_slice = Image.fromarray(gt_img[:,:,idz])
+        gt_slice_resized = gt_slice.resize((256, 256), Image.Resampling.LANCZOS)
+
+        # Save CT and GT images
+        ct_slice_resized.save(f"{dest_path}\\img\\{id_}_{idz:04d}.png")
+        gt_slice_resized.save(f"{dest_path}\\gt\\{id_}_{idz:04d}.png")
     
     # Return voxel spacing
     return dx, dy, dz
