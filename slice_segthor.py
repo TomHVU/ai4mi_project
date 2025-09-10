@@ -20,14 +20,14 @@ Goal: normalize an image array to the range [0, 255]  and return it as a dtype=u
 Which is compatible with standard image formats (PNG)
 """
 def norm_arr(img: np.ndarray) -> np.ndarray:
-    # Normalized CT image within the 256 greyscale
+    # Normalized CT image within to 256 greyscale
     img_norm = img * (255 / img.max())
     
     return img_norm.astype(np.uint8)
 
 
 def sanity_ct(ct, x, y, z, dx, dy, dz) -> bool:
-    # assert ct.dtype in [np.int16, np.int32], ct.dtype
+    assert ct.dtype in [np.int16, np.int32], ct.dtype
     assert -1000 <= ct.min(), ct.min()
     assert ct.max() <= 31743, ct.max()
 
@@ -84,7 +84,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
     assert gt_path.exists()
 
     # Import CT and GT image
-    ct_img = nibabel.load(ct_path).get_fdata()
+    ct_img = nibabel.load(ct_path).get_fdata().astype(np.int16)
     ct_nifty = nibabel.load(ct_path)
     gt_img = nibabel.load(gt_path).get_fdata().astype(np.uint8)
     
@@ -114,7 +114,7 @@ def slice_patient(id_: str, dest_path: Path, source_path: Path, shape: tuple[int
         gt_slice = Image.fromarray(gt_img[:,:,idz])
         gt_slice_resized = gt_slice.resize((256, 256), Image.Resampling.LANCZOS)
 
-        # Save CT and GT images
+        # Save CT and GT slices
         ct_slice_resized.save(f"{dest_path}\\img\\{id_}_{idz:04d}.png")
         gt_slice_resized.save(f"{dest_path}\\gt\\{id_}_{idz:04d}.png")
     
