@@ -3,6 +3,7 @@
     "configurations": [
 
 
+
         {
             "name": "Debug slice_segthor",
             "type": "debugpy",
@@ -30,9 +31,9 @@
             "console": "integratedTerminal",
             "args": [
                 "--source_dir",
-                "data\\segtor_train\\train\\Patient_27",
+                "data\\segthor_train\\train\\Patient_27",
                 "--dest_dir",
-                "data\\SEGTHOR_tmp\\train\\Patient_27",
+                "data\\segthor_train\\train\\Patient_27",
                 "--seed",
                 "42"
             ]
