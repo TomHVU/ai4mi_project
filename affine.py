@@ -50,6 +50,8 @@ T4 = np.array([
 # Put matrices into one affine matrix
 combined_affine = T1 @ R2 @ T3 @ T4 
 
+inverse_affine = np.linalg.inv(combined_affine)
+
 # Patient 27 has both good and bad
 # TODO: import all patient images.
 def import_image(source_path: Path) -> nibabel.Nifti1Image:
@@ -60,29 +62,19 @@ def import_image(source_path: Path) -> nibabel.Nifti1Image:
     # Import GT image
     gt_nifti = nibabel.load(gt_path)
 
-    # # Increasing GT greyscale distance to increase contrast
-    # gt_img *= 63
-    # assert gt_img.dtype == np.uint8, gt_img.dtype
-    # assert set(np.unique(gt_img)) <= set([0, 63, 126, 189, 252]), np.unique(gt_img)    
-
     return gt_nifti
 
-def detamper(image, matrix, reverse=True) -> np.array:
+def detamper(image, inverse_affine) -> np.array:
     # Reverse the affine transformation using the inverse
     # Could be used as forward as well
 
-    # If we want to reverse the transformation, use inverse
-    if reverse:
-        matrix = np.linalg.inv(matrix)
-
     # Perform transformation
-    detampered_img = scipy.ndimage.affine_transform(image, matrix)
+    detampered_img = scipy.ndimage.affine_transform(image, inverse_affine)
 
     # Return image
     return detampered_img
 
 def main(src_path):
-    step_by_step = args.step_by_step
 
     # Extract nifti file and save affine and header
     gt_img = import_image(src_path / "GT.nii.gz")
@@ -99,15 +91,8 @@ def main(src_path):
     # Remove the tampered heart
     gt_img[gt_img == 2] = 0
 
-    # To see separate matrix steps play out.
-    if step_by_step:
-        gt_heart_T4 = detamper(gt_heart, T4)
-        gt_heart_T3 = detamper(gt_heart_T4, T3)
-        gt_heart_R2 = detamper(gt_heart_T3, R2)
-        gt_heart_T1 = detamper(gt_heart_R2, T1)
-
     # Reverse the affine transformation 
-    gt_heart_combined = detamper(gt_heart, combined_affine)
+    gt_heart_combined = scipy.ndimage.affine_transform(gt_heart, inverse_affine, order=0)
 
     # Put back the heart
     gt_img[gt_heart_combined == 2] = 2
@@ -133,6 +118,16 @@ if __name__ == "__main__":
 
     args = get_args()
     dir = Path(args.source_dir)
-    
+
+    t01 = time.time()
+
     for patient_file in dir.iterdir():
+        t0 = time.time()
         main(patient_file)
+        t1 = time.time()
+        print(f"Patient {patient_file} transformed in {t1 - t0}")
+        
+    t11 = time.time()
+    print(f"Completed 40 in {t11 - t01}")
+
+    
