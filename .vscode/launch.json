@@ -1,6 +1,8 @@
 {
     "version": "0.2.0",
     "configurations": [
+
+
         {
             "name": "Debug slice_segthor",
             "type": "debugpy",
@@ -18,6 +20,23 @@
                 "--retain",
                 "10"
             ]
+        },
+
+        {   
+            "name": "Debug affine",
+            "type": "debugpy",
+            "request": "launch",
+            "program": "${file}",
+            "console": "integratedTerminal",
+            "args": [
+                "--source_dir",
+                "data\\segtor_train\\train\\Patient_27",
+                "--dest_dir",
+                "data\\SEGTHOR_tmp\\train\\Patient_27",
+                "--seed",
+                "42"
+            ]
+
         }
     ]
 }
