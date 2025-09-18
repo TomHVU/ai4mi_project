@@ -1,20 +1,14 @@
-import pickle
 import random
-import os
-import sys
 from pathlib import Path
 import argparse
-import warnings
 from pathlib import Path
-from functools import partial
 from multiprocessing import Pool
-from typing import Callable
 import nibabel
-from PIL import Image
 import numpy as np
 import scipy.ndimage 
-import skimage
+from multiprocessing import Pool, cpu_count
 import time
+from tqdm import tqdm
 
 from utils import map_, tqdm_
 
@@ -42,7 +36,7 @@ T3 = np.linalg.inv(T1)
 # T4
 T4 = np.array([
     [1, 0, 0, 50],
-    [0, 1, 0, 40],
+    [0, 1, 0, 40],    
     [0, 0, 1, 15],
     [0, 0, 0, 1]
 ], dtype=float)
@@ -114,20 +108,43 @@ def get_args() -> argparse.Namespace:
 
     return args
 
+## Running the patient files with multiprocessing (~65s)
 if __name__ == "__main__":
-
     args = get_args()
     dir = Path(args.source_dir)
 
+    # Collect all patient files
+    patient_files = list(dir.iterdir())
+
+    # Start the clock
     t01 = time.time()
 
-    for patient_file in dir.iterdir():
-        t0 = time.time()
-        main(patient_file)
-        t1 = time.time()
-        print(f"Patient {patient_file} transformed in {t1 - t0}")
-        
+    # Parallelize across CPU cores
+    with Pool(processes=cpu_count()) as pool:
+
+        # Progress bar
+        for _ in tqdm(pool.imap_unordered(main, patient_files), total=len(patient_files)):
+            pass
+
+    # Time!
     t11 = time.time()
-    print(f"Completed 40 in {t11 - t01}")
+    print(f"Completed {len(patient_files)} in {t11 - t01:.2f} seconds")
+
+## Without multiprocessing (3:20m)
+# if __name__ == "__main__":
+
+#     args = get_args()
+#     dir = Path(args.source_dir)
+
+#     t01 = time.time()
+
+#     for patient_file in dir.iterdir():
+#         t0 = time.time()
+#         main(patient_file)
+#         t1 = time.time()
+#         print(f"Patient {patient_file} transformed in {t1 - t0}")
+        
+#     t11 = time.time()
+#     print(f"Completed 40 in {t11 - t01}")
 
     
