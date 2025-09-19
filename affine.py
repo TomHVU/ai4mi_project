@@ -10,8 +10,6 @@ from multiprocessing import Pool, cpu_count
 import time
 from tqdm import tqdm
 
-from utils import map_, tqdm_
-
 # Define matrices
 # T1
 T1 = np.array([
@@ -58,18 +56,9 @@ def import_image(source_path: Path) -> nibabel.Nifti1Image:
 
     return gt_nifti
 
-def detamper(image, inverse_affine) -> np.array:
-    # Reverse the affine transformation using the inverse
-    # Could be used as forward as well
-
-    # Perform transformation
-    detampered_img = scipy.ndimage.affine_transform(image, inverse_affine)
-
-    # Return image
-    return detampered_img
-
 def main(src_path):
 
+    t0 = time.time()
     # Extract nifti file and save affine and header
     gt_img = import_image(src_path / "GT.nii.gz")
     gt_header = gt_img.header
@@ -88,12 +77,16 @@ def main(src_path):
     # Reverse the affine transformation 
     gt_heart_combined = scipy.ndimage.affine_transform(gt_heart, inverse_affine, order=0)
 
-    # Put back the heart
+    # Put back the detampered heart
     gt_img[gt_heart_combined == 2] = 2
 
-     # Save image  
-    gt_img = nibabel.Nifti1Image(gt_heart_combined, gt_affine, header=gt_header)
-    nibabel.save(gt_img, src_path / 'GT_fixed.nii.gz')
+    # Save image  
+    gt_nifty_fixed = nibabel.Nifti1Image(gt_img, gt_affine, header=gt_header)
+    nibabel.save(gt_nifty_fixed, src_path / 'GT_fixed.nii.gz')
+    
+    # Output finished message
+    t1 = time.time()
+    print(f"{src_path.name} transformed in {t1 - t0}")
     
 def get_args() -> argparse.Namespace:
 
@@ -108,7 +101,7 @@ def get_args() -> argparse.Namespace:
 
     return args
 
-## Running the patient files with multiprocessing (~65s)
+## Running the patient files with multiprocessing (~45s on my machine)
 if __name__ == "__main__":
     args = get_args()
     dir = Path(args.source_dir)
@@ -130,7 +123,7 @@ if __name__ == "__main__":
     t11 = time.time()
     print(f"Completed {len(patient_files)} in {t11 - t01:.2f} seconds")
 
-## Without multiprocessing (3:20m)
+# # Without multiprocessing (3:20m)
 # if __name__ == "__main__":
 
 #     args = get_args()
@@ -139,11 +132,8 @@ if __name__ == "__main__":
 #     t01 = time.time()
 
 #     for patient_file in dir.iterdir():
-#         t0 = time.time()
+
 #         main(patient_file)
-#         t1 = time.time()
-#         print(f"Patient {patient_file} transformed in {t1 - t0}")
-        
 #     t11 = time.time()
 #     print(f"Completed 40 in {t11 - t01}")
 
