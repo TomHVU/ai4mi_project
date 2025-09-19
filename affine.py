@@ -86,6 +86,7 @@ def main(src_path):
     
     # Output finished message
     t1 = time.time()
+    print("")
     print(f"{src_path.name} transformed in {t1 - t0}")
     
 def get_args() -> argparse.Namespace:
@@ -121,6 +122,8 @@ if __name__ == "__main__":
 
     # Time!
     t11 = time.time()
+    print("")
+    print("")
     print(f"Completed {len(patient_files)} in {t11 - t01:.2f} seconds")
 
 # # Without multiprocessing (3:20m)
