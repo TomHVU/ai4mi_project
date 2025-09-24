@@ -104,7 +104,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
                              debug=args.debug)
     train_loader = DataLoader(train_set,
                               batch_size=B,
-                              num_workers=5,
+                              num_workers=0,
                               shuffle=True)
 
     val_set = SliceDataset('val',
@@ -114,7 +114,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
                            debug=args.debug)
     val_loader = DataLoader(val_set,
                             batch_size=B,
-                            num_workers=5,
+                            num_workers=0,
                             shuffle=False)
 
     args.dest.mkdir(parents=True, exist_ok=True)
@@ -240,7 +240,7 @@ def main():
                         help="Destination directory to save the results (predictions and weights).")
 
     parser.add_argument('--gpu', action='store_true')
-    parser.add_argument('--debug', action='store_true',
+    parser.add_argument('--debug', action ='store_true',
                         help="Keep only a fraction (10 samples) of the datasets, "
                              "to test the logics around epochs and logging easily.")
 
