@@ -1,6 +1,6 @@
 import os
 import sys
-import regex as re
+import re
 import random
 from pathlib import Path
 import argparse
@@ -14,30 +14,14 @@ from multiprocessing import Pool, cpu_count
 import time
 from tqdm import tqdm
 from PIL import Image
-import sklearn
-
-
-def import_images(data_path, grp_regex) -> np.uint8:
-    """
-    Import png images and stack them
-    """
-    
-
-    pass
-
-
-def save_3d_image(nifty_3d, path) -> nibabel.Niftyimage:
-    """
-    Save the 3D slices as nifti image
-    """
-    pass
+from skimage.transform import resize
     
 def main(args: argparse.Namespace):
-    data_path: Path = Path(args.source_dir)
-    dest_path: Path = Path(args.dest_dir)
+    data_path: Path = Path(args.data_folder)
+    dest_path: Path = Path(args.dest_folder)
     num_classes: int = int(args.num_classes)
     grp_regex: str = str(args.grp_regex)
-    source_scan_pattern: Path = Path(args.source_scan_pattern)
+    source_scan_pattern: str = str(args.source_scan_pattern)
 
     if not data_path.exists():
         data_path.mkdir(parents=True, exist_ok=True)
@@ -50,31 +34,66 @@ def main(args: argparse.Namespace):
     # The patient list
     # patients = [str(n).zfill(2) for n in range(1, 41)]
 
-    patients = list
+    patients = set()
     for parse in data_path.iterdir():
-        parse = re.search(grp_regex, parse)
-        id = parse.group(1)
-        patients.append(id)
+        match = re.search(grp_regex, parse.name)
+        id = match.group(1)
+        patients.add(id)
 
     # Sort numerically
-    slices = list
+    
     for id in patients:
-        for item in data_path.iterdir():
-            if f"Patient_{id}" in item:
-                parse = re.search(grp_regex, item)
-                number = parse.group(2)
-                slices.append(sklearn.transform.resize(Image.open(f"{data_path}/Patient_{id}_{number}.png"), (512, 512)))
-                #TODO: divide the channels by (255 / num_channels - 1)
         
-        img = nibabel.load(source_scan_pattern.format(id))
+        slices = []
+        patient_files = [item for item in data_path.iterdir() if id in item.name]
+
+        # Sort files numerically based on the number in filename
+        def extract_number(file):
+            parse = re.search(grp_regex, file.name)
+            return int(parse.group(0)[-4:])  # convert to int for numerical sorting
+        
+        patient_files.sort(key=extract_number)
+
+        # Load images
+        for item in patient_files:
+            number = extract_number(item)
+            img = np.array(Image.open(f"{data_path}/{id}_{number:04d}.png")).astype(np.float32)
+            # print(np.unique(img))
+            img_scaled = np.round(img.astype(np.float32) * (num_classes - 1) / 255).astype(np.uint8)
+            img_resized = resize(img_scaled, (512, 512), order=0, preserve_range=True, anti_aliasing=True)
+            slices.append(img_resized)
+            # slices.append(img_scaled)
+
+        # slices = []
+        # for item in data_path.iterdir():
+
+        #     if id in item.name:
+        #         parse = re.search(grp_regex, item.name)
+        #         number = parse.group(0)[-4:]
+
+        #         # Append per channel
+        #         slices.append(resize(np.array(Image.open(f"{data_path}/{id}_{number}.png")), (512, 512), order=0, preserve_range=True, anti_aliasing=True))
+
+        # Convert to np.array 
+        # gt_img = np.array(slices, dtype=np.int8)
+        gt_img = np.stack(slices, axis=2).astype(np.uint8)
+        print(gt_img.shape)
+        print(np.unique(gt_img))
+        print(id)
+
+        img = nibabel.load(Path(__file__).parent / source_scan_pattern.format(id_ = id))
         header = img.header
         affine = img.affine
 
-        gt_stitched = np.array(slices)
+        print(affine)
 
-        gt_nifti = nibabel.Nifti1Image(gt_stitched, affine=affine, header=header)
-        nibabel.save(gt_nifti, f"{dest_path}/stitched/GT.nii.gz")
-
+        gt_nifti = nibabel.Nifti1Image(gt_img, affine=affine, header=header)
+        
+        if not Path(f"{dest_path}/{id}").exists():
+            os.mkdir(f"{dest_path}/{id}")
+        nibabel.save(gt_nifti, f"{dest_path}/{id}/GT.nii.gz")
+        print(f"Saved {id}'s stitched GT at {dest_path}/{id}/GT.nii.gz")
+        break
 
 def get_args() -> argparse.Namespace:
 
@@ -82,7 +101,7 @@ def get_args() -> argparse.Namespace:
 
     parser.add_argument("--data_folder", type=str, required=True)
     parser.add_argument("--dest_folder", type=str, required=True)
-    parser.add_argument("--num_classes", type=int, default=255)
+    parser.add_argument("--num_classes", type=int, default=5)
     parser.add_argument("--grp_regex", type=str, default="(Patient_\d\d)_\d\d\d\d")
     parser.add_argument("--source_scan_pattern", type=str, default="data/segthor_train/train/{id_}/GT.nii.gz")
     parser.add_argument("--seed", type=int, default=42, help="Random Seed")
@@ -93,4 +112,4 @@ def get_args() -> argparse.Namespace:
     return args
 
 if __name__ == "__main__":
-    main(get_args)
+    main(get_args())
