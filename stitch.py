@@ -12,6 +12,11 @@ from tqdm import tqdm
 
 image_3d.astype(np.int8)
 
+def import_images(data_path) -> np.array():
+    
+    pass
+
+
 def save_3d_image(nifty_3d, path) -> nibabel.Niftyimage:
     """
     Save the 3D slices as nifti image
