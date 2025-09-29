@@ -1,19 +1,28 @@
+import os
+import sys
+import regex as re
 import random
 from pathlib import Path
 import argparse
 from pathlib import Path
 from multiprocessing import Pool
+from collections import defaultdict
 import nibabel
 import numpy as np
 import scipy.ndimage 
 from multiprocessing import Pool, cpu_count
 import time
 from tqdm import tqdm
+from PIL import Image
+import sklearn
 
-image_3d.astype(np.int8)
 
-def import_images(data_path) -> np.array():
+def import_images(data_path, grp_regex) -> np.uint8:
+    """
+    Import png images and stack them
+    """
     
+
     pass
 
 
@@ -26,6 +35,10 @@ def save_3d_image(nifty_3d, path) -> nibabel.Niftyimage:
 def main(args: argparse.Namespace):
     data_path: Path = Path(args.source_dir)
     dest_path: Path = Path(args.dest_dir)
+    num_classes: int = int(args.num_classes)
+    grp_regex: str = str(args.grp_regex)
+    source_scan_pattern: Path = Path(args.source_scan_pattern)
+
     if not data_path.exists():
         data_path.mkdir(parents=True, exist_ok=True)
     if not dest_path.exists():
@@ -33,6 +46,35 @@ def main(args: argparse.Namespace):
 
     assert data_path.exists()
     assert dest_path.exists()
+    
+    # The patient list
+    # patients = [str(n).zfill(2) for n in range(1, 41)]
+
+    patients = list
+    for parse in data_path.iterdir():
+        parse = re.search(grp_regex, parse)
+        id = parse.group(1)
+        patients.append(id)
+
+    # Sort numerically
+    slices = list
+    for id in patients:
+        for item in data_path.iterdir():
+            if f"Patient_{id}" in item:
+                parse = re.search(grp_regex, item)
+                number = parse.group(2)
+                slices.append(sklearn.transform.resize(Image.open(f"{data_path}/Patient_{id}_{number}.png"), (512, 512)))
+                #TODO: divide the channels by (255 / num_channels - 1)
+        
+        img = nibabel.load(source_scan_pattern.format(id))
+        header = img.header
+        affine = img.affine
+
+        gt_stitched = np.array(slices)
+
+        gt_nifti = nibabel.Nifti1Image(gt_stitched, affine=affine, header=header)
+        nibabel.save(gt_nifti, f"{dest_path}/stitched/GT.nii.gz")
+
 
 def get_args() -> argparse.Namespace:
 
