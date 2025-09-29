@@ -10,7 +10,9 @@ from multiprocessing import Pool, cpu_count
 import time
 from tqdm import tqdm
 
-def save_3d_image(image_3d, path) -> nibabel.Niftyimage:
+image_3d.astype(np.int8)
+
+def save_3d_image(nifty_3d, path) -> nibabel.Niftyimage:
     """
     Save the 3D slices as nifti image
     """
