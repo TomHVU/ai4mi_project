@@ -8,9 +8,7 @@
 
 
 # Loading module
-module load 2023
-module load Python/3.11.3-GCCcore-12.3.0
-source ~/.ai4ml/bin/activate
+conda activate ai4ml
 
 python3.11 main.py \
 --epochs 3 \
