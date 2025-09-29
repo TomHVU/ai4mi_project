@@ -106,7 +106,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
                              debug=args.debug)
     train_loader = DataLoader(train_set,
                               batch_size=B,
-                              num_workers=0,
+                              num_workers=4,
                               shuffle=True)
 
     val_set = SliceDataset('val',
@@ -116,7 +116,7 @@ def setup(args) -> tuple[nn.Module, Any, Any, DataLoader, DataLoader, int]:
                            debug=args.debug)
     val_loader = DataLoader(val_set,
                             batch_size=B,
-                            num_workers=0,
+                            num_workers=4,
                             shuffle=False)
 
     args.dest.mkdir(parents=True, exist_ok=True)
