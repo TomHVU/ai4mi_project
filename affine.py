@@ -93,7 +93,7 @@ def get_args() -> argparse.Namespace:
 
     parser = argparse.ArgumentParser(description = "Slicing parameters")
 
-    parser.add_argument("--source_dir", type=str, default="data")
+    parser.add_argument("--source_dir", type=str, default="data", required=True)
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     parser.add_argument("--step_by_step", type=bool, default=False)
 
@@ -102,42 +102,42 @@ def get_args() -> argparse.Namespace:
 
     return args
 
-## Running the patient files with multiprocessing (~45s on my machine)
-if __name__ == "__main__":
-    args = get_args()
-    dir = Path(args.source_dir)
-
-    # Collect all patient files
-    patient_files = list(dir.iterdir())
-
-    # Start the clock
-    t01 = time.time()
-
-    # Parallelize across CPU cores
-    with Pool(processes=cpu_count()) as pool:
-
-        # Progress bar
-        for _ in tqdm(pool.imap_unordered(main, patient_files), total=len(patient_files)):
-            pass
-
-    # Time!
-    t11 = time.time()
-    print("")
-    print("")
-    print(f"Completed {len(patient_files)} in {t11 - t01:.2f} seconds")
-
-# # Without multiprocessing (3:20m)
+# ## Running the patient files with multiprocessing (~45s on my machine)
 # if __name__ == "__main__":
-
 #     args = get_args()
 #     dir = Path(args.source_dir)
 
+#     # Collect all patient files
+#     patient_files = list(dir.iterdir())
+
+#     # Start the clock
 #     t01 = time.time()
 
-#     for patient_file in dir.iterdir():
+#     # Parallelize across CPU cores
+#     with Pool(processes=cpu_count()) as pool:
 
-#         main(patient_file)
+#         # Progress bar
+#         for _ in tqdm(pool.imap_unordered(main, patient_files), total=len(patient_files)):
+#             pass
+
+#     # Time!
 #     t11 = time.time()
-#     print(f"Completed 40 in {t11 - t01}")
+#     print("")
+#     print("")
+#     print(f"Completed {len(patient_files)} in {t11 - t01:.2f} seconds")
+
+# Without multiprocessing (3:20m)
+if __name__ == "__main__":
+
+    args = get_args()
+    dir = Path(args.source_dir)
+
+    t01 = time.time()
+
+    for patient_file in dir.iterdir():
+
+        main(patient_file)
+    t11 = time.time()
+    print(f"Completed 40 in {t11 - t01}")
 
     

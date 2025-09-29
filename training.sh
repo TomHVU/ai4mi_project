@@ -10,7 +10,7 @@
 # Loading module
 conda activate ai4ml
 
-python3.11 main.py \
+python main.py \
 --epochs 3 \
 --dataset SEGTHOR_CLEAN \
 --mode partial \
