@@ -1,18 +1,10 @@
 import os
-import sys
 import re
 import random
 from pathlib import Path
 import argparse
-from pathlib import Path
-from multiprocessing import Pool
-from collections import defaultdict
 import nibabel
 import numpy as np
-import scipy.ndimage 
-from multiprocessing import Pool, cpu_count
-import time
-from tqdm import tqdm
 from PIL import Image
 from skimage.transform import resize
     
@@ -30,70 +22,56 @@ def main(args: argparse.Namespace):
 
     assert data_path.exists()
     assert dest_path.exists()
-    
-    # The patient list
-    # patients = [str(n).zfill(2) for n in range(1, 41)]
 
+    # Detect number of patients in dir using re.
     patients = set()
     for parse in data_path.iterdir():
         match = re.search(grp_regex, parse.name)
         id = match.group(1)
         patients.add(id)
 
-    # Sort numerically
-    
+    # Look through patient files.
     for id in patients:
         
         slices = []
         patient_files = [item for item in data_path.iterdir() if id in item.name]
 
-        # Sort files numerically based on the number in filename
+        # Sort files numerically based on the number in filename.
         def extract_number(file):
             parse = re.search(grp_regex, file.name)
-            return int(parse.group(0)[-4:])  # convert to int for numerical sorting
+            return int(parse.group(0)[-4:])  # Convert to int for numerical sorting.
         
+        # Sort by number
         patient_files.sort(key=extract_number)
 
-        # Load images
+        # Import GT mask, normalize and rescale.
         for item in patient_files:
             number = extract_number(item)
             img = np.array(Image.open(f"{data_path}/{id}_{number:04d}.png")).astype(np.float32)
-            # print(np.unique(img))
-            img_scaled = np.round(img.astype(np.float32) * (num_classes - 1) / 255).astype(np.uint8)
+
+            # Normalize.
+            img_scaled = np.round(img.astype(np.float32) * (num_classes - 1) / 255).astype(np.uint8) # 63
+
+            # Apply sklearn.transform.resize function.
             img_resized = resize(img_scaled, (512, 512), order=0, preserve_range=True, anti_aliasing=True)
             slices.append(img_resized)
-            # slices.append(img_scaled)
 
-        # slices = []
-        # for item in data_path.iterdir():
-
-        #     if id in item.name:
-        #         parse = re.search(grp_regex, item.name)
-        #         number = parse.group(0)[-4:]
-
-        #         # Append per channel
-        #         slices.append(resize(np.array(Image.open(f"{data_path}/{id}_{number}.png")), (512, 512), order=0, preserve_range=True, anti_aliasing=True))
-
-        # Convert to np.array 
-        # gt_img = np.array(slices, dtype=np.int8)
+        # Stack slices into 3D reconstruction.
         gt_img = np.stack(slices, axis=2).astype(np.uint8)
-        print(gt_img.shape)
-        print(np.unique(gt_img))
-        print(id)
 
+        # Find original CT image and grab affine and header.
         img = nibabel.load(Path(__file__).parent / source_scan_pattern.format(id_ = id))
         header = img.header
         affine = img.affine
 
-        print(affine)
-
+        # Build nifty with 3D GT image, affine matrix and header.
         gt_nifti = nibabel.Nifti1Image(gt_img, affine=affine, header=header)
         
+        # Save nifti.
         if not Path(f"{dest_path}/{id}").exists():
             os.mkdir(f"{dest_path}/{id}")
         nibabel.save(gt_nifti, f"{dest_path}/{id}/GT.nii.gz")
         print(f"Saved {id}'s stitched GT at {dest_path}/{id}/GT.nii.gz")
-        break
 
 def get_args() -> argparse.Namespace:
 
